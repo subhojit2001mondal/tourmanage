@@ -1,0 +1,8 @@
+{
+  "name": "TourMatch",
+  "description": "Travel package management and competitive pricing platform for travel agencies.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

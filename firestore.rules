@@ -3,49 +3,59 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
     // Helper functions
-    function isAuthenticated() {
+    function isSignedIn() {
       return request.auth != null;
     }
-    
-    function isAgency() {
-      return isAuthenticated() && exists(/databases/$(database)/documents/agencies/$(request.auth.uid));
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
-    
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isAgency() {
+      return isSignedIn() && exists(/databases/$(database)/documents/agencies/$(request.auth.uid));
+    }
+
     function isVerifiedAgency() {
       return isAgency() && get(/databases/$(database)/documents/agencies/$(request.auth.uid)).data.kycStatus == 'verified';
     }
 
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    // Connection test document
+    match /test/{testId} {
+      allow read: if true;
     }
-    
-    // Users (Customers)
+
+    // Users (Customers & Admins)
     match /users/{userId} {
-      // Users can read and write their own profile
-      allow read, write: if isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
-    
+
     // Agencies (B2B)
     match /agencies/{agencyId} {
-      // Anyone can read agency profiles (for public listings)
       allow read: if true;
-      // Only the agency itself can update its profile, but cannot change kycStatus
-      allow update: if isOwner(agencyId) && 
-                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['kycStatus']));
-      // Allow agency creation with pending status
-      allow create: if isOwner(agencyId) && request.resource.data.kycStatus == 'pending';
+      allow create: if isOwner(agencyId);
+      allow update: if isOwner(agencyId);
+      allow delete: if isOwner(agencyId);
     }
-    
-    // Packages
+
+    // Travel Packages
     match /packages/{packageId} {
-      // Anyone can read packages
       allow read: if true;
-      // Only verified agencies can create packages, and they must own them
-      allow create: if isVerifiedAgency() && request.resource.data.agencyId == request.auth.uid;
-      // Only the agency that created the package can update or delete it
-      allow update, delete: if isVerifiedAgency() && resource.data.agencyId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.agencyId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.agencyId == request.auth.uid;
     }
-    
   }
 }

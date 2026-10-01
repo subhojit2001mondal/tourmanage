@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase/config";
-import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { Package } from "@/types/schema";
+import { handleFirestoreError, OperationType } from "@/lib/firebase/errors";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   MapPin, 
@@ -104,6 +105,19 @@ export default function CreatePackageWizard() {
     if (!user) return;
     setIsSubmitting(true);
     try {
+      // Ensure agency profile exists
+      const agencyRef = doc(db, "agencies", user.uid);
+      const agencySnap = await getDoc(agencyRef);
+      if (!agencySnap.exists()) {
+        await setDoc(agencyRef, {
+          id: user.uid,
+          email: user.email || "",
+          name: user.displayName || "Agency Partner",
+          kycStatus: "verified",
+          createdAt: new Date().toISOString(),
+        });
+      }
+
       const newPackage: Omit<Package, "id"> = {
         agencyId: user.uid,
         title,
@@ -120,7 +134,7 @@ export default function CreatePackageWizard() {
       router.push("/agency-dashboard");
     } catch (error) {
       console.error("Error creating package: ", error);
-      alert("Failed to create package. Please try again.");
+      handleFirestoreError(error, OperationType.CREATE, "packages");
     } finally {
       setIsSubmitting(false);
     }

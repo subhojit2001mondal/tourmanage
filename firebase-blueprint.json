@@ -1,0 +1,128 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Customer or admin user profile",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the user"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["customer", "admin"],
+          "description": "User role in the system"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp of user creation"
+        }
+      },
+      "required": ["email", "name", "role", "createdAt"]
+    },
+    "Agency": {
+      "title": "Agency",
+      "description": "Travel agency profile with KYC status",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Agency business email"
+        },
+        "name": {
+          "type": "string",
+          "description": "Agency business name"
+        },
+        "kycStatus": {
+          "type": "string",
+          "enum": ["pending", "verified", "rejected"],
+          "description": "Agency verification status"
+        },
+        "contactNumber": {
+          "type": "string",
+          "description": "Contact phone number"
+        },
+        "website": {
+          "type": "string",
+          "description": "Agency website URL"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp of agency registration"
+        }
+      },
+      "required": ["email", "name", "kycStatus", "createdAt"]
+    },
+    "Package": {
+      "title": "Package",
+      "description": "Travel package listing created by verified agencies",
+      "type": "object",
+      "properties": {
+        "agencyId": {
+          "type": "string",
+          "description": "UID of the agency that owns this package"
+        },
+        "title": {
+          "type": "string",
+          "description": "Package title",
+          "maxLength": 200
+        },
+        "destination": {
+          "type": "string",
+          "description": "Travel destination",
+          "maxLength": 100
+        },
+        "duration": {
+          "type": "number",
+          "description": "Duration in days"
+        },
+        "price": {
+          "type": "number",
+          "description": "Price in USD"
+        },
+        "itinerary": {
+          "type": "array",
+          "description": "Day by day itinerary description"
+        },
+        "includedItems": {
+          "type": "object",
+          "description": "Inclusions like flights, meals, hotel category"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["agencyId", "title", "destination", "duration", "price", "itinerary", "includedItems", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "/agencies/{agencyId}": {
+      "schema": { "$ref": "#/entities/Agency" },
+      "description": "Travel agencies profiles"
+    },
+    "/packages/{packageId}": {
+      "schema": { "$ref": "#/entities/Package" },
+      "description": "Travel packages listings"
+    }
+  }
+}
