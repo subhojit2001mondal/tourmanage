@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAgency() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/agencies/$(request.auth.uid));
+    }
+    
+    function isVerifiedAgency() {
+      return isAgency() && get(/databases/$(database)/documents/agencies/$(request.auth.uid)).data.kycStatus == 'verified';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users (Customers)
+    match /users/{userId} {
+      // Users can read and write their own profile
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Agencies (B2B)
+    match /agencies/{agencyId} {
+      // Anyone can read agency profiles (for public listings)
+      allow read: if true;
+      // Only the agency itself can update its profile, but cannot change kycStatus
+      allow update: if isOwner(agencyId) && 
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['kycStatus']));
+      // Allow agency creation with pending status
+      allow create: if isOwner(agencyId) && request.resource.data.kycStatus == 'pending';
+    }
+    
+    // Packages
+    match /packages/{packageId} {
+      // Anyone can read packages
+      allow read: if true;
+      // Only verified agencies can create packages, and they must own them
+      allow create: if isVerifiedAgency() && request.resource.data.agencyId == request.auth.uid;
+      // Only the agency that created the package can update or delete it
+      allow update, delete: if isVerifiedAgency() && resource.data.agencyId == request.auth.uid;
+    }
+    
+  }
+}
